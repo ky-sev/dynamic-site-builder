@@ -1,0 +1,224 @@
+<main class="shell">
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Workflow Studio home">
+      <span class="brand-mark">W</span>
+      <span>Workflow Studio</span>
+    </a>
+    <span class="environment"><span class="status-dot"></span> Production control</span>
+  </header>
+
+  <section class="intro">
+    <p class="eyebrow">DYNAMIC WORKFLOW FORM</p>
+    <h1>{{ schemaTitle() }}</h1>
+    <p class="lede">{{ schemaDescription() }}</p>
+  </section>
+
+  <form class="workflow-picker" (ngSubmit)="loadWorkflow()">
+    <label for="workflow-key">Workflow key</label>
+    <div class="picker-row">
+      <input
+        id="workflow-key"
+        name="workflowKey"
+        [(ngModel)]="workflowKey"
+        maxlength="50"
+        pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,49}"
+        required
+      />
+      <button class="button secondary" type="submit" [disabled]="loading() || saving()">
+        {{ loading() ? 'Loading…' : 'Load workflow' }}
+      </button>
+    </div>
+  </form>
+
+  @if (message()) {
+    <p class="notice" [class.error]="messageIsError()" role="status">{{ message() }}</p>
+  }
+
+  <div class="workspace">
+    <section class="preview panel" aria-labelledby="preview-heading">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">GENERATED FORM</p>
+          <h2 id="preview-heading">Deal details</h2>
+        </div>
+        @if (active(); as current) {
+          <span class="active-badge">v{{ current.version }} · Active</span>
+        } @else {
+          <span class="draft-badge">Example schema</span>
+        }
+      </div>
+
+      @if (schemaError()) {
+        <p class="notice error" role="alert">{{ schemaError() }}</p>
+      } @else if (formFields().length === 0) {
+        <p class="empty-state">This workflow does not define any form fields yet. Edit the JSON schema below to add fields.</p>
+      } @else {
+        <form class="workflow-form" (ngSubmit)="showPreviewOutput()">
+          <div class="form-fields">
+            @for (field of formFields(); track field.key) {
+              <div class="form-field">
+                @if (field.type === 'yesNo') {
+                  <span class="field-label">{{ field.label }}</span>
+                  <label class="yes-no-control" [for]="field.key">
+                    <input
+                      [id]="field.key"
+                      [name]="field.key"
+                      type="checkbox"
+                      [(ngModel)]="formValues[field.key]"
+                    />
+                    <span>Yes</span>
+                  </label>
+                } @else {
+                  <label class="field-label" [for]="field.key">
+                    {{ field.label }}
+                    @if (field.required) {
+                      <span class="required-mark" aria-label="required">*</span>
+                    }
+                  </label>
+                  @switch (field.type) {
+                    @case ('dropdown') {
+                      <select
+                        [id]="field.key"
+                        [name]="field.key"
+                        [(ngModel)]="formValues[field.key]"
+                        [required]="field.required ?? false"
+                      >
+                        <option value="" disabled>Select an option</option>
+                        @for (option of field.options; track option) {
+                          <option [value]="option">{{ option }}</option>
+                        }
+                      </select>
+                    }
+                    @case ('textarea') {
+                      <textarea
+                        [id]="field.key"
+                        [name]="field.key"
+                        [(ngModel)]="formValues[field.key]"
+                        [placeholder]="field.placeholder ?? ''"
+                        [required]="field.required ?? false"
+                        rows="4"
+                      ></textarea>
+                    }
+                    @default {
+                      <input
+                        [id]="field.key"
+                        [name]="field.key"
+                        [type]="field.type"
+                        [(ngModel)]="formValues[field.key]"
+                        [placeholder]="field.placeholder ?? ''"
+                        [required]="field.required ?? false"
+                      />
+                    }
+                  }
+                }
+              </div>
+            }
+          </div>
+          <button class="button primary" type="submit">Preview submitted JSON</button>
+          @if (formOutput()) {
+            <section class="output" aria-live="polite">
+              <h3>Form values</h3>
+              <pre>{{ formOutput() }}</pre>
+            </section>
+          }
+        </form>
+      }
+    </section>
+
+    <details class="editor-details panel">
+      <summary>Edit workflow JSON and publish a version</summary>
+      <div class="editor-content">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">ACTIVE CONFIGURATION</p>
+            <h2>Workflow schema</h2>
+          </div>
+          @if (active(); as current) {
+            <span class="active-badge">v{{ current.version }} · Active</span>
+          } @else {
+            <span class="draft-badge">Draft example</span>
+          }
+        </div>
+
+        <label for="schema-data">JSON configuration</label>
+        <textarea
+          id="schema-data"
+          name="schemaData"
+          [(ngModel)]="schemaText"
+          (ngModelChange)="updateFormPreview()"
+          spellcheck="false"
+          autocomplete="off"
+          aria-describedby="schema-help"
+        ></textarea>
+        <p class="field-help" id="schema-help">
+          Each field needs a unique <code>key</code>, a <code>label</code>, and a supported <code>type</code>.
+          Publishing creates a new immutable version and makes it active.
+        </p>
+
+        <form class="publish-form" (ngSubmit)="deployVersion()">
+          <div class="field-grid">
+            <div class="field">
+              <label for="updated-by">Your email or ID</label>
+              <input id="updated-by" name="updatedBy" [(ngModel)]="updatedBy" maxlength="100" required autocomplete="username" />
+            </div>
+            <div class="field">
+              <label for="commit-message">Change summary <span class="optional">(optional)</span></label>
+              <input id="commit-message" name="commitMessage" [(ngModel)]="commitMessage" maxlength="2000" placeholder="What changed?" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="admin-token">Admin bearer token</label>
+            <input id="admin-token" name="adminToken" [(ngModel)]="adminToken" type="password" required autocomplete="current-password" />
+            <p class="field-help">Used only for this session; it is not saved in the browser.</p>
+          </div>
+          <button class="button primary" type="submit" [disabled]="saving() || loading()">
+            {{ saving() ? 'Publishing…' : 'Publish new version' }}
+          </button>
+        </form>
+      </div>
+    </details>
+
+    <aside class="history panel" aria-labelledby="history-heading">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">AUDIT TRAIL</p>
+          <h2 id="history-heading">Version history</h2>
+        </div>
+        <span class="count">{{ versions().length }}</span>
+      </div>
+
+      @if (loading()) {
+        <p class="empty-state">Loading version history…</p>
+      } @else if (!adminToken.trim()) {
+        <p class="empty-state">Enter the admin token to view version history.</p>
+      } @else if (versions().length === 0) {
+        <p class="empty-state">No versions yet. Publish a schema to start the history.</p>
+      } @else {
+        <ol class="version-list">
+          @for (item of versions(); track item.version) {
+            <li class="version-item">
+              <div class="version-line">
+                <strong>v{{ item.version }}</strong>
+                @if (item.is_active) {
+                  <span class="active-badge">Active</span>
+                } @else {
+                  <button
+                    class="rollback-button"
+                    type="button"
+                    [disabled]="saving() || loading()"
+                    (click)="rollback(item.version)"
+                  >Restore</button>
+                }
+              </div>
+              <p class="commit-message">{{ item.commit_message || 'No change summary' }}</p>
+              <p class="metadata">By {{ item.updated_by }}</p>
+              <time class="metadata" [attr.datetime]="item.created_at">{{ item.created_at }}</time>
+            </li>
+          }
+        </ol>
+      }
+    </aside>
+  </div>
+
+  <footer>Workflow changes are versioned and can be restored at any time.</footer>
+</main>

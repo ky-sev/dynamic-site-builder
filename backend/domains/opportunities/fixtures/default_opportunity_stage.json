@@ -1,0 +1,19 @@
+[
+  {
+    "key": "opportunities",
+    "title": "Opportunities",
+    "description": "Track execution, evaluation milestones, and operational checks for the deal.",
+    "fields": [
+      {
+        "key": "funding-received",
+        "label": "Funding received?",
+        "type": "yesNo"
+      },
+      {
+        "key": "contract-signed",
+        "label": "Contract signed?",
+        "type": "yesNo"
+      }
+    ]
+  }
+]

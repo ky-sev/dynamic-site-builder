@@ -1,0 +1,9 @@
+node_modules
+dist
+.angular
+coverage
+env.local
+env.local.*
+!env.local.example
+.git
+.gitignore
