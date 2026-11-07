@@ -52,7 +52,97 @@
     <p class="notice" [class.error]="messageIsError()" role="status">{{ message() }}</p>
   }
 
-  <div class="workspace">
+  @if (selectedDomainKey() === 'reporting') {
+    <section class="reporting-section panel" aria-labelledby="reporting-heading">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">EXECUTIVE METRICS</p>
+          <h2 id="reporting-heading">{{ reportData()?.workflow_title || 'Deal Opportunities' }} Analytics (v{{ reportData()?.active_version || 1 }})</h2>
+        </div>
+        <span class="active-badge">{{ reportData()?.total_submissions || 0 }} Submissions</span>
+      </div>
+
+      @if (reportData(); as report) {
+        <div class="metrics-grid">
+          @for (col of report.columns; track col.key) {
+            @if (report.metrics[col.key]; as m) {
+              <div class="metric-card">
+                <span class="metric-label">{{ m.label }}</span>
+                @if (m.type === 'yesNo') {
+                  <div class="metric-stat-group">
+                    <span class="metric-large">{{ m.completion_rate }}%</span>
+                    <span class="metric-subtext">{{ m.yes_count }} Yes · {{ m.no_count }} No</span>
+                  </div>
+                } @else if (m.type === 'dropdown') {
+                  <div class="metric-stat-group">
+                    <span class="metric-subtext">Distribution:</span>
+                    <div class="dist-list">
+                      @for (item of m.distribution | keyvalue; track item.key) {
+                        <div class="dist-row">
+                          <span>{{ item.key }}:</span>
+                          <strong>{{ item.value }}</strong>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                } @else if (m.type === 'number') {
+                  <div class="metric-stat-group">
+                    <span class="metric-large">{{ m.avg }} avg</span>
+                    <span class="metric-subtext">Min: {{ m.min }} · Max: {{ m.max }}</span>
+                  </div>
+                } @else {
+                  <div class="metric-stat-group">
+                    <span class="metric-large">{{ m.response_rate }}%</span>
+                    <span class="metric-subtext">{{ m.populated_count }} responses</span>
+                  </div>
+                }
+              </div>
+            }
+          }
+        </div>
+
+        @if (report.recent_submissions.length > 0) {
+          <div class="submissions-table-wrap">
+            <table class="submissions-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Time</th>
+                  @for (col of report.columns; track col.key) {
+                    <th>{{ col.label }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (sub of report.recent_submissions; track sub.id) {
+                  <tr>
+                    <td>#{{ sub.id }}</td>
+                    <td>{{ sub.submitted_at | date:'short' }}</td>
+                    @for (col of report.columns; track col.key) {
+                      <td>
+                        @if (col.type === 'yesNo') {
+                          <span [class.badge-yes]="sub.values[col.key]" [class.badge-no]="!sub.values[col.key]">
+                            {{ sub.values[col.key] ? 'Yes' : 'No' }}
+                          </span>
+                        } @else {
+                          {{ sub.values[col.key] ?? '-' }}
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty-state">No submissions recorded yet for this workflow. Submit deal forms to see live reporting.</p>
+        }
+      } @else {
+        <p class="empty-state">Loading reporting data...</p>
+      }
+    </section>
+  } @else {
+    <div class="workspace">
     <section class="preview panel" aria-labelledby="preview-heading">
       <div class="panel-heading">
         <div>
@@ -237,6 +327,7 @@
       }
     </aside>
   </div>
+}
 
   @if (reportData(); as report) {
     <section class="reporting-section panel" aria-labelledby="reporting-heading">
