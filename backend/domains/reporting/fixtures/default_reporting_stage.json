@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "title": "Pipeline Reporting & Analytics",
+  "description": "Cross-stage metrics, deal pipeline conversion, and velocity reports.",
+  "fields": [
+    {
+      "key": "reportPeriod",
+      "label": "Reporting period",
+      "type": "dropdown",
+      "required": true,
+      "options": ["Current Quarter", "Last 30 Days", "Year to Date", "All Time"]
+    },
+    {
+      "key": "pipelineStatus",
+      "label": "Pipeline status filter",
+      "type": "dropdown",
+      "required": false,
+      "options": ["All Deals", "Funded Only", "Signed Only"]
+    },
+    {
+      "key": "exportFormat",
+      "label": "Export format",
+      "type": "dropdown",
+      "required": false,
+      "options": ["CSV", "JSON", "Executive Summary PDF"]
+    }
+  ]
+}

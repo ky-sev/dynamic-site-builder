@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import { afterNextRender, Component, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
@@ -27,6 +28,39 @@ interface WorkflowVersion {
 
 interface ApiErrorBody {
   error?: string;
+}
+
+export interface DomainNavigationItem {
+  key: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  nav_order: number;
+  route: string;
+  workflow_key: string;
+  is_active: boolean;
+}
+
+export interface DynamicReportColumn {
+  key: string;
+  label: string;
+  type: string;
+}
+
+export interface DynamicReportData {
+  workflow_key: string;
+  workflow_title: string;
+  active_version: number;
+  total_submissions: number;
+  columns: DynamicReportColumn[];
+  metrics: Record<string, any>;
+  recent_submissions: Array<{
+    id: number;
+    submitted_at: string;
+    submitted_by: string;
+    version: number;
+    values: Record<string, any>;
+  }>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -69,7 +103,7 @@ const EXAMPLE_SCHEMA: {
 
 @Component({
   selector: 'app-root',
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './workflow-admin.html',
   styleUrl: './workflow-admin.css',
 })
@@ -92,6 +126,9 @@ export class App {
   protected readonly schemaError = signal('');
   protected readonly active = signal<ActiveWorkflow | null>(null);
   protected readonly versions = signal<WorkflowVersion[]>([]);
+  protected readonly navigationDomains = signal<DomainNavigationItem[]>([]);
+  protected readonly selectedDomainKey = signal<string>('deal_flow');
+  protected readonly reportData = signal<DynamicReportData | null>(null);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly message = signal('');
@@ -99,8 +136,31 @@ export class App {
 
   constructor() {
     afterNextRender(() => {
-      void this.loadWorkflow();
+      void this.initApp();
     });
+  }
+
+  protected async initApp(): Promise<void> {
+    await this.loadNavigationDomains();
+    await this.loadWorkflow();
+  }
+
+  protected async loadNavigationDomains(): Promise<void> {
+    try {
+      const items = await this.request<DomainNavigationItem[]>('/api/domains/navigation');
+      this.navigationDomains.set(items);
+      if (items.length > 0 && !items.some(d => d.workflow_key === this.workflowKey)) {
+        this.selectDomain(items[0]);
+      }
+    } catch {
+      // Fallback silently if navigation fails or running standalone
+    }
+  }
+
+  protected selectDomain(domain: DomainNavigationItem): void {
+    this.selectedDomainKey.set(domain.key);
+    this.workflowKey = domain.workflow_key;
+    void this.loadWorkflow();
   }
 
   protected async loadWorkflow(): Promise<void> {
@@ -138,11 +198,35 @@ export class App {
 
     if (versionsResult.status === 'fulfilled') {
       this.versions.set(versionsResult.value);
+    } else if (this.active()) {
+      // If no admin token or no version history yet, represent the active/fixture version in the history list
+      const activeVer = this.active()!;
+      this.versions.set([
+        {
+          version: activeVer.version,
+          is_active: true,
+          updated_by: 'system',
+          commit_message: 'Initial stage baseline',
+          created_at: new Date().toISOString(),
+        },
+      ]);
     } else {
       this.showMessage(this.errorMessage(versionsResult.reason), true);
     }
 
+    // Also fetch dynamic reporting for this workflow
+    void this.loadReportData(key);
+
     this.loading.set(false);
+  }
+
+  protected async loadReportData(key: string): Promise<void> {
+    try {
+      const data = await this.request<DynamicReportData>(`/api/reporting/${encodeURIComponent(key)}`);
+      this.reportData.set(data);
+    } catch {
+      this.reportData.set(null);
+    }
   }
 
   protected async deployVersion(): Promise<void> {
@@ -185,6 +269,15 @@ export class App {
         },
       );
       this.commitMessage = '';
+      
+      // Instantly update active version signal in UI
+      if (isRecord(schemaData)) {
+        this.active.set({
+          schema_data: schemaData,
+          version: result.deployedVersion,
+        });
+      }
+
       await this.loadWorkflow();
       this.showMessage(`Deployed version ${result.deployedVersion}.`);
     } catch (error) {

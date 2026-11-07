@@ -1,10 +1,11 @@
 {
-    "key": "opportunities",
-    "title": "Opportunities",
-    "description": "Track execution, evaluation milestones, and operational checks.",
-    "icon": "trending-up",
-    "nav_order": 2,
-    "route": "/opportunities",
-    "workflow_key": "deal_opportunities",
-    "is_active": true
+  "key": "opportunities",
+  "title": "Opportunities",
+  "description": "Track execution, evaluation milestones, and operational checks.",
+  "icon": "trending-up",
+  "nav_order": 2,
+  "route": "/opportunities",
+  "workflow_key": "deal_opportunities",
+  "default_fixture": "fixtures/default_opportunity_stage.json",
+  "is_active": true
 }

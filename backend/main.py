@@ -18,6 +18,16 @@ from schemas import (
     RollbackWorkflowResponse,
     WorkflowVersionResponse,
 )
+from domains.registry import (
+    DomainManifest,
+    discover_domain_manifests,
+    get_domain_default_fixture,
+)
+from domains.reporting.schemas.report import (
+    CreateSubmissionRequest,
+    DynamicReportResponse,
+)
+from domains.reporting.services.report_service import generate_dynamic_report
 from settings import settings
 
 
@@ -138,6 +148,11 @@ def get_active_workflow(key: WorkflowKey, db: Database) -> dict[str, object]:
         raise database_error("Database reading error.", error) from error
 
     if row is None:
+        default_data = get_domain_default_fixture(key)
+        if default_data is not None:
+            fixture_version = int(default_data.get("version", 1)) if isinstance(default_data.get("version"), (int, float, str)) and str(default_data.get("version")).isdigit() else 1
+            return {"schema_data": default_data, "version": fixture_version}
+
         raise HTTPException(
             status_code=404, detail="No active workflow configuration found."
         )
@@ -307,3 +322,132 @@ def rollback_workflow_version(
         raise database_error("Rollback failed.", error) from error
 
     return {"success": True, "revertedTo": version}
+
+
+@app.get(
+    "/api/domains/navigation",
+    response_model=list[DomainManifest],
+    summary="Get dynamic domain navigation items",
+)
+def get_domain_navigation() -> list[DomainManifest]:
+    """Returns all active domain navigation items discovered from domain manifests."""
+    return discover_domain_manifests()
+
+
+@app.post(
+    "/api/workflow/{key}/submission",
+    status_code=201,
+    summary="Submit data for an active workflow stage",
+)
+def submit_workflow_data(
+    key: WorkflowKey,
+    payload: CreateSubmissionRequest,
+    db: Database,
+) -> dict[str, object]:
+    """Records a form submission validated against the active workflow version."""
+    active_data = get_active_workflow(key, db)
+    version = int(active_data["version"])
+    json_data = json.dumps(payload.data)
+
+    try:
+        with db.begin() as connection:
+            # Ensure table exists
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS form_submissions (
+                        id SERIAL PRIMARY KEY,
+                        workflow_key VARCHAR(50) NOT NULL,
+                        version INT NOT NULL,
+                        data JSONB NOT NULL,
+                        submitted_by VARCHAR(100),
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                    """
+                )
+            )
+            result = connection.execute(
+                text(
+                    """
+                    INSERT INTO form_submissions (workflow_key, version, data, submitted_by)
+                    VALUES (:key, :version, CAST(:data AS jsonb), :submitted_by)
+                    RETURNING id
+                    """
+                ),
+                {
+                    "key": key,
+                    "version": version,
+                    "data": json_data,
+                    "submitted_by": payload.submitted_by,
+                },
+            )
+            sub_id = result.scalar_one()
+    except Exception as error:
+        raise database_error("Failed to store submission.", error) from error
+
+    return {"success": True, "id": sub_id, "version": version}
+
+
+@app.get(
+    "/api/reporting/{key}",
+    response_model=DynamicReportResponse,
+    summary="Get dynamic reporting projected against the active version",
+)
+def get_workflow_report(
+    key: WorkflowKey,
+    db: Database,
+) -> DynamicReportResponse:
+    """
+    Dynamically generates metrics and table views projected against
+    the active schema definition in the database.
+    """
+    # If the user selects the general reporting domain, default to reporting across opportunities
+    target_key = "deal_opportunities" if key == "deal_reporting" else key
+
+    active_info = get_active_workflow(target_key, db)
+    active_schema = active_info.get("schema_data", {})
+    active_version = int(active_info.get("version", 1))
+
+    submissions: list[dict[str, object]] = []
+    try:
+        with db.connect() as connection:
+            table_check = connection.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables 
+                        WHERE table_name = 'form_submissions'
+                    );
+                    """
+                )
+            ).scalar()
+
+            if table_check:
+                rows = (
+                    connection.execute(
+                        text(
+                            """
+                            SELECT id, workflow_key, version, data, submitted_by, created_at
+                            FROM form_submissions
+                            WHERE workflow_key = :key
+                            ORDER BY id DESC
+                            LIMIT 100
+                            """
+                        ),
+                        {"key": target_key},
+                    )
+                    .mappings()
+                    .all()
+                )
+                submissions = [dict(row) for row in rows]
+    except Exception as error:
+        raise database_error("Error reading submissions for reporting.", error) from error
+
+    return generate_dynamic_report(
+        workflow_key=key,
+        active_schema=active_schema,
+        active_version=active_version,
+        submissions=submissions,
+    )
+
+

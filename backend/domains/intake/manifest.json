@@ -1,10 +1,11 @@
 {
-    "key": "intake",
-    "title": "Deal Intake",
-    "description": "Capture the essential details for a new deal.",
-    "icon": "inbox",
-    "nav_order": 1,
-    "route": "/intake",
-    "workflow_key": "deal_intake",
-    "is_active": true
+  "key": "intake",
+  "title": "Deal Intake",
+  "description": "Capture the essential details for a new deal.",
+  "icon": "inbox",
+  "nav_order": 1,
+  "route": "/intake",
+  "workflow_key": "deal_intake",
+  "default_fixture": "fixtures/default_intake_stage.json",
+  "is_active": true
 }

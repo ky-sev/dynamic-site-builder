@@ -1,0 +1,11 @@
+{
+  "key": "reporting",
+  "title": "Reporting & Analytics",
+  "description": "View metrics, pipeline velocity, and cross-stage performance.",
+  "icon": "bar-chart-2",
+  "nav_order": 3,
+  "route": "/reporting",
+  "workflow_key": "deal_reporting",
+  "default_fixture": "fixtures/default_reporting_stage.json",
+  "is_active": true
+}

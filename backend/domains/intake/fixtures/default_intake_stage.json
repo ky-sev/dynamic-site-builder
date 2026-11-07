@@ -1,48 +1,30 @@
-[
-  {
-    "key": "intake",
-    "title": "Intake",
-    "description": "Capture the essential details for a new deal.",
-    "fields": [
-      {
-        "key": "customerName",
-        "label": "Customer name",
-        "type": "text",
-        "required": true
-      },
-      {
-        "key": "dealName",
-        "label": "Deal name",
-        "type": "text",
-        "required": true
-      },
-      {
-        "key": "dealType",
-        "label": "Deal type",
-        "type": "dropdown",
-        "options": [
-          "Acquisition",
-          "Partnership",
-          "Renewal"
-        ]
-      }
-    ]
-  },
-  {
-    "key": "opportunities",
-    "title": "Opportunities",
-    "description": "Track execution, evaluation milestones, and operational checks for the deal.",
-    "fields": [
-      {
-        "key": "funding-received",
-        "label": "Funding received?",
-        "type": "yesNo"
-      },
-      {
-        "key": "contract-signed",
-        "label": "Contract signed?",
-        "type": "yesNo"
-      }
-    ]
-  }
-]
+{
+  "version": 1,
+  "title": "Deal intake",
+  "description": "Capture the essential details for a new deal.",
+  "fields": [
+    {
+      "key": "customerName",
+      "label": "Customer name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "dealName",
+      "label": "Deal name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "dealType",
+      "label": "Deal type",
+      "type": "dropdown",
+      "required": true,
+      "options": [
+        "Acquisition",
+        "Partnership",
+        "Renewal"
+      ]
+    }
+  ]
+}
