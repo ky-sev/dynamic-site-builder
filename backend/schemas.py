@@ -26,6 +26,7 @@ class WorkflowField(BaseModel):
     required: bool = False
     placeholder: str | None = None
     options: list[Annotated[str, Field(min_length=1, max_length=200)]] | None = None
+    reportable: bool = True
 
     # Ensures options are present only for dropdown fields.
     @model_validator(mode="after")

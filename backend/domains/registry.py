@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 DOMAINS_ROOT = Path(__file__).resolve().parent
 
 
+# Represents domain metadata and navigation configuration discovered from a domain manifest.
 class DomainManifest(BaseModel):
     key: str
     title: str
@@ -22,11 +23,8 @@ class DomainManifest(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+# Discovers all domain manifests dynamically by scanning backend/domains/ for manifest.json files.
 def discover_domain_manifests() -> List[DomainManifest]:
-    """
-    Discovers all domain manifests dynamically by scanning backend/domains/
-    for manifest.json files. Returns active manifests sorted by nav_order.
-    """
     manifests: List[DomainManifest] = []
 
     if not DOMAINS_ROOT.exists():
@@ -50,10 +48,8 @@ def discover_domain_manifests() -> List[DomainManifest]:
     return manifests
 
 
+# Looks up a domain by workflow_key or key and loads its default_fixture JSON if available.
 def get_domain_default_fixture(workflow_key: str) -> Optional[Dict[str, Any]]:
-    """
-    Looks up a domain by workflow_key or key and loads its default_fixture JSON if available.
-    """
     if not DOMAINS_ROOT.exists():
         return None
 

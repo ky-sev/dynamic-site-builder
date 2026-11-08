@@ -37,6 +37,7 @@ EXAMPLE_SCHEMA = {
 }
 
 
+# Validates workflow schema parsing, field constraints, and duplication rules.
 class WorkflowSchemaTests(unittest.TestCase):
     def test_example_schema_is_valid_and_keeps_field_types(self) -> None:
         schema = WorkflowSchema.model_validate(EXAMPLE_SCHEMA)

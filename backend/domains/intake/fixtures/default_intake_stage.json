@@ -7,13 +7,15 @@
       "key": "customerName",
       "label": "Customer name",
       "type": "text",
-      "required": true
+      "required": true,
+      "reportable": false
     },
     {
       "key": "dealName",
       "label": "Deal name",
       "type": "text",
-      "required": true
+      "required": true,
+      "reportable": true
     },
     {
       "key": "dealType",
@@ -24,7 +26,8 @@
         "Acquisition",
         "Partnership",
         "Renewal"
-      ]
+      ],
+      "reportable": true
     }
   ]
 }

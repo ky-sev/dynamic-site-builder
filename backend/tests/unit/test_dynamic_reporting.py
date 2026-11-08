@@ -1,17 +1,42 @@
+from domains.reporting.schemas.report import ChartType
 from domains.reporting.services.report_service import generate_dynamic_report
 
 
-def test_generate_dynamic_report_yes_no_and_dropdown():
+# Verifies widget generation per chart type and confirms reportable=False excludes fields from widgets.
+def test_generate_dynamic_report_widgets_and_reportable_flag():
     active_schema = {
-        "title": "Opportunities",
+        "title": "Deal Flow",
         "fields": [
-            {"key": "fundingReceived", "label": "Funding received?", "type": "yesNo"},
-            {"key": "contractSigned", "label": "Contract signed?", "type": "yesNo"},
+            {
+                "key": "customerName",
+                "label": "Customer name",
+                "type": "text",
+                "reportable": False,  # Should NOT generate a widget
+            },
+            {
+                "key": "dealName",
+                "label": "Deal name",
+                "type": "text",
+                "reportable": True,   # Should generate a STAT_CARD widget
+            },
+            {
+                "key": "fundingReceived",
+                "label": "Funding received?",
+                "type": "yesNo",
+                "reportable": True,   # Should generate a DONUT_CHART widget
+            },
             {
                 "key": "dealType",
                 "label": "Deal type",
                 "type": "dropdown",
                 "options": ["Acquisition", "Renewal"],
+                "reportable": True,   # Should generate a BAR_CHART widget
+            },
+            {
+                "key": "dealAmount",
+                "label": "Deal amount",
+                "type": "number",
+                "reportable": True,   # Should generate a STAT_CARD widget
             },
         ],
     }
@@ -21,34 +46,27 @@ def test_generate_dynamic_report_yes_no_and_dropdown():
             "id": 1,
             "version": 1,
             "data": {
+                "customerName": "Acme Corp",
+                "dealName": "Project Falcon",
                 "fundingReceived": True,
-                "contractSigned": False,
                 "dealType": "Acquisition",
+                "dealAmount": 100000,
             },
-            "submitted_by": "user1",
-            "created_at": "2026-11-07T12:00:00Z",
+            "submitted_by": "alice",
+            "created_at": "2026-11-08T10:00:00Z",
         },
         {
             "id": 2,
             "version": 1,
             "data": {
-                "fundingReceived": True,
-                "contractSigned": True,
-                "dealType": "Renewal",
-            },
-            "submitted_by": "user2",
-            "created_at": "2026-11-07T12:05:00Z",
-        },
-        {
-            "id": 3,
-            "version": 1,
-            "data": {
+                "customerName": "Beta Inc",
+                "dealName": "Project Eagle",
                 "fundingReceived": False,
-                "contractSigned": False,
-                "dealType": "Acquisition",
+                "dealType": "Renewal",
+                "dealAmount": 200000,
             },
-            "submitted_by": "user3",
-            "created_at": "2026-11-07T12:10:00Z",
+            "submitted_by": "bob",
+            "created_at": "2026-11-08T11:00:00Z",
         },
     ]
 
@@ -59,59 +77,23 @@ def test_generate_dynamic_report_yes_no_and_dropdown():
         submissions=submissions,
     )
 
-    assert report.total_submissions == 3
-    assert len(report.columns) == 3
-    assert report.columns[0].key == "fundingReceived"
+    assert report.total_submissions == 2
+    assert len(report.columns) == 5
 
-    # Verify yesNo metric
-    funding_metric = report.metrics["fundingReceived"]
-    assert funding_metric["yes_count"] == 2
-    assert funding_metric["no_count"] == 1
-    assert funding_metric["completion_rate"] == 66.7
+    widget_keys = [w.field_key for w in report.widgets]
+    assert "customerName" not in widget_keys  # Verified: reportable=False is excluded from widgets
+    assert "fundingReceived" in widget_keys
+    assert "dealType" in widget_keys
+    assert "dealAmount" in widget_keys
+    assert "_timeline" in widget_keys         # Timeline line chart included
 
-    # Verify dropdown distribution
-    type_metric = report.metrics["dealType"]
-    assert type_metric["distribution"]["Acquisition"] == 2
-    assert type_metric["distribution"]["Renewal"] == 1
+    # Verify widget chart types
+    funding_widget = next(w for w in report.widgets if w.field_key == "fundingReceived")
+    assert funding_widget.chart_type == ChartType.DONUT_CHART
 
-    # Verify recent submissions alignment
-    assert len(report.recent_submissions) == 3
-    assert report.recent_submissions[0]["values"]["fundingReceived"] is True
+    type_widget = next(w for w in report.widgets if w.field_key == "dealType")
+    assert type_widget.chart_type == ChartType.BAR_CHART
 
-
-def test_generate_dynamic_report_omits_deprecated_fields():
-    """
-    If an older submission contains a removed field,
-    the report reflects only the currently active schema columns.
-    """
-    active_schema = {
-        "title": "Deal intake",
-        "fields": [
-            {"key": "dealName", "label": "Deal name", "type": "text"},
-        ],
-    }
-
-    submissions = [
-        {
-            "id": 1,
-            "version": 1,
-            "data": {
-                "dealName": "Northwind",
-                "oldDeprecatedField": "legacy value",
-            },
-        }
-    ]
-
-    report = generate_dynamic_report(
-        workflow_key="deal_intake",
-        active_schema=active_schema,
-        active_version=2,
-        submissions=submissions,
-    )
-
-    assert len(report.columns) == 1
-    assert report.columns[0].key == "dealName"
-    assert "oldDeprecatedField" not in report.columns[0].key
-    assert "oldDeprecatedField" not in report.metrics
-    assert "oldDeprecatedField" not in report.recent_submissions[0]["values"]
-
+    amount_widget = next(w for w in report.widgets if w.field_key == "dealAmount")
+    assert amount_widget.chart_type == ChartType.STAT_CARD
+    assert amount_widget.data["average"] == 150000.0

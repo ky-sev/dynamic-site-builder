@@ -2,6 +2,8 @@ services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-workflows}
       POSTGRES_USER: ${POSTGRES_USER:-workflow}
@@ -9,6 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations/001_workflow_versions.sql:/docker-entrypoint-initdb.d/001_workflow_versions.sql:ro
+      - ./backend/migrations/002_form_submissions.sql:/docker-entrypoint-initdb.d/002_form_submissions.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s

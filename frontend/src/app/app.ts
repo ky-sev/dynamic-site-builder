@@ -47,12 +47,22 @@ export interface DynamicReportColumn {
   type: string;
 }
 
+export interface ReportWidget {
+  id: string;
+  field_key: string;
+  title: string;
+  chart_type: 'stat_card' | 'bar_chart' | 'donut_chart' | 'line_chart';
+  summary: string;
+  data: any;
+}
+
 export interface DynamicReportData {
   workflow_key: string;
   workflow_title: string;
   active_version: number;
   total_submissions: number;
   columns: DynamicReportColumn[];
+  widgets: ReportWidget[];
   metrics: Record<string, any>;
   recent_submissions: Array<{
     id: number;

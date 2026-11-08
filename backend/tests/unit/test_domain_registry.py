@@ -8,6 +8,7 @@ from domains.registry import (
 )
 
 
+# Verifies that domain manifests are discovered and sorted according to their navigation order.
 def test_discover_domain_manifests():
     manifests = discover_domain_manifests()
     assert len(manifests) >= 2
@@ -21,6 +22,7 @@ def test_discover_domain_manifests():
     assert "opportunities" in keys
 
 
+# Ensures every business domain package provides a valid manifest without conflicting routes.
 def test_all_domains_have_valid_manifests():
     excluded = {"workflow_engine", "__pycache__"}
     domain_dirs = [
@@ -48,6 +50,7 @@ def test_all_domains_have_valid_manifests():
         keys_seen.add(manifest.key)
 
 
+# Verifies that domain fixture files resolve and supply the baseline fields for intake and opportunities.
 def test_opportunities_and_intake_default_fixtures():
     # Test opportunities fixture lookup
     opp_fixture = get_domain_default_fixture("deal_opportunities")

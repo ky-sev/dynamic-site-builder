@@ -324,16 +324,17 @@ def rollback_workflow_version(
     return {"success": True, "revertedTo": version}
 
 
+# Returns all active domain navigation items discovered from domain manifests.
 @app.get(
     "/api/domains/navigation",
     response_model=list[DomainManifest],
     summary="Get dynamic domain navigation items",
 )
 def get_domain_navigation() -> list[DomainManifest]:
-    """Returns all active domain navigation items discovered from domain manifests."""
     return discover_domain_manifests()
 
 
+# Records a form submission validated against the active workflow version.
 @app.post(
     "/api/workflow/{key}/submission",
     status_code=201,
@@ -344,7 +345,6 @@ def submit_workflow_data(
     payload: CreateSubmissionRequest,
     db: Database,
 ) -> dict[str, object]:
-    """Records a form submission validated against the active workflow version."""
     active_data = get_active_workflow(key, db)
     version = int(active_data["version"])
     json_data = json.dumps(payload.data)
@@ -388,6 +388,7 @@ def submit_workflow_data(
     return {"success": True, "id": sub_id, "version": version}
 
 
+# Dynamically generates metrics and table views projected against the active schema definition in the database.
 @app.get(
     "/api/reporting/{key}",
     response_model=DynamicReportResponse,
@@ -397,10 +398,6 @@ def get_workflow_report(
     key: WorkflowKey,
     db: Database,
 ) -> DynamicReportResponse:
-    """
-    Dynamically generates metrics and table views projected against
-    the active schema definition in the database.
-    """
     # If the user selects the general reporting domain, default to reporting across opportunities
     target_key = "deal_opportunities" if key == "deal_reporting" else key
 
