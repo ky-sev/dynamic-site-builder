@@ -26,6 +26,7 @@ class ReportWidget(BaseModel):
     title: str
     chart_type: ChartType
     summary: str = ""
+    svg: Optional[str] = None
     data: Any
 
 

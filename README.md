@@ -1,8 +1,8 @@
 # Dynamic Site Builder _(dynamic-site-builder)_
 
-Workflow configuration editor, schema validator, and live form preview engine.
+Workflow configuration editor, schema validator, live form preview engine, and dynamic analytics dashboard.
 
-Dynamic Site Builder (also known as `json-site`) is a full-stack platform designed to build, preview, and manage data-driven workflows using JSON schemas. It provides an Angular administrative UI paired with an Express Server-Side Rendering (SSR) proxy layer, a FastAPI backend for validation and version control, and a PostgreSQL database storing schema versions as versioned JSONB documents.
+Dynamic Site Builder (also known as `json-site`) is a full-stack platform designed to build, preview, and manage data-driven workflows using JSON schemas following Domain-Driven Design (DDD). It provides an Angular administrative UI paired with an Express Server-Side Rendering (SSR) proxy layer, a FastAPI backend for validation and version control, and a PostgreSQL database storing versioned schemas and dynamic JSONB form submissions.
 
 > Note: The repository and root directory are named `dynamic-site-builder`, while the internal frontend package and SSR artifacts are labeled `json-site`.
 
@@ -10,8 +10,10 @@ Dynamic Site Builder (also known as `json-site`) is a full-stack platform design
 
 - [Security](#security)
 - [Background](#background)
+- [Architecture & Domain Structure](#architecture--domain-structure)
 - [Install](#install)
 - [Usage](#usage)
+- [Dynamic Reporting & Analytics](#dynamic-reporting--analytics)
 - [API](#api)
 - [Maintainers](#maintainers)
 - [Contributing](#contributing)
@@ -36,7 +38,32 @@ Dynamic Site Builder resolves this by decoupling the form definition from client
 - **Declarative Schemas:** Workflows and fields are declared in standard JSON structures.
 - **Dynamic Field Types:** Out-of-the-box support for `text`, `yesNo`, `dropdown`, `textarea`, `number`, and `date` fields.
 - **Audit & Version History:** Every publication generates an immutable, sequential version snapshot, allowing safe rollbacks at any point.
-- **Preview Execution:** Administrators can test input validation and review real-time JSON state before activating changes in live environments.
+- **Dynamic Domain Navigation:** Domains self-register via `manifest.json` files; navigation tabs light up automatically.
+- **Schema-Aware Reporting:** Executive dashboards dynamically project submissions against whichever fields are active in the database schema.
+
+## Architecture & Domain Structure
+
+The backend follows Domain-Driven Design (DDD):
+
+```
+backend/
+├── app/                       # Composition layer: config, database sessions, security, startup
+├── domains/                   # Bounded business contexts
+│   ├── intake/                # Stage 1: Initial deal capture and questionnaire
+│   │   ├── fixtures/          # Baseline schema seeds (default_intake_stage.json)
+│   │   └── manifest.json      # Self-declaring navigation & route metadata
+│   ├── opportunities/         # Stage 2: Milestones, funding, and contract tracking
+│   │   ├── fixtures/          # Baseline schema seeds (default_opportunity_stage.json)
+│   │   └── manifest.json
+│   ├── reporting/             # Dynamic analytics projection & chart widgets
+│   │   ├── fixtures/          # Baseline reporting schema
+│   │   ├── schemas/           # Report DTOs, ChartType definitions
+│   │   └── services/          # Dynamic projection service across active fields
+│   └── workflow_engine/       # Meta-engine for schema validation and versioning
+├── gateways/                  # Outbound adapters (PostgreSQL, Redis, Kafka, etc.)
+├── migrations/                # Database migrations (001_workflow_versions.sql, 002_form_submissions.sql)
+└── tests/                     # Multi-tier test suites (unit, integration, e2e)
+```
 
 ## Install
 
@@ -57,11 +84,12 @@ Initialize your local environment file from the provided example:
 Copy-Item frontend\env.local.example frontend\env.local
 ```
 
-Edit `frontend/env.local` to define your secrets:
+Edit `frontend/env.local` to define your credentials:
 
 ```env
+DATABASE_URL=postgresql://workflow:local-compose-only@localhost:5432/workflows
 WORKFLOW_ADMIN_TOKEN=your-secure-random-token
-POSTGRES_PASSWORD=your-secure-db-password
+POSTGRES_PASSWORD=local-compose-only
 APP_PORT=4000
 ```
 
@@ -91,10 +119,11 @@ docker compose --env-file frontend\env.local down --volumes
 
 #### 1. Database Setup
 
-Ensure PostgreSQL is running and initialize the database schema:
+Ensure PostgreSQL is running and initialize the database schema migrations:
 
 ```powershell
 psql -h localhost -U workflow -d workflows -f backend\migrations\001_workflow_versions.sql
+psql -h localhost -U workflow -d workflows -f backend\migrations\002_form_submissions.sql
 ```
 
 #### 2. Backend API Setup
@@ -139,13 +168,30 @@ npm run serve:ssr:json-site
 
 Visit the application at `http://localhost:4000`.
 
+### Seeding Demo Data
+
+To populate sample intake and opportunity submissions for analytics:
+
+```powershell
+Set-Location backend
+python seed_data.py
+```
+*(Or inside Docker: `docker compose exec api python seed_data.py`)*
+
 ### Workflow Admin Interface
 
-1. **Load Workflow:** Enter a key (e.g., `deal_flow`) and fetch active definitions. If uninitialized, the sample schema ([`examples/deal-flow.json`](./examples/deal-flow.json)) is loaded.
-2. **Schema Editing & Validation:** Modify form fields in the JSON editor. The interactive form renders instantaneously and highlights validation errors.
-3. **Form Preview:** Enter form values in the rendered fields to observe real-time serialized JSON output.
-4. **Publishing Versions:** Supply the author identifier (`updated_by`), commit message, and `WORKFLOW_ADMIN_TOKEN`, then trigger publish.
+1. **Domain Navigation Tabs:** Click between **Deal Intake**, **Opportunities**, and **Reporting & Analytics**. The navigation panel is built dynamically from backend domain manifests.
+2. **Dynamic Baseline Loading:** If a domain hasn't been saved to PostgreSQL yet, its local `fixtures/default_*_stage.json` baseline is loaded as Version 1.
+3. **Schema Editing & Validation:** Modify form fields in the JSON editor. The interactive form renders instantaneously and highlights validation errors.
+4. **Publishing Versions:** Supply the author identifier (`updated_by`), commit message, and `WORKFLOW_ADMIN_TOKEN`, then trigger publish. The active version badge updates immediately.
 5. **Rollback:** Navigate deployment history and restore any previous version with zero downtime.
+
+## Dynamic Reporting & Analytics
+
+Selecting the **Reporting & Analytics** tab renders an executive dashboard:
+- **Standardized Chart Widgets:** Automatically renders Donut Charts (`yesNo`), Bar Charts (`dropdown`), KPI Stat Cards (`number`, `text`), and Submission Activity Timelines (`line_chart`).
+- **`reportable` Key:** Set `"reportable": false` on fields (such as private notes or IDs) to omit them from charts while keeping them in data tables.
+- **Active Schema Alignment:** Dashboard metrics and table columns always reflect the active database schema, gracefully handling deprecated or newly added fields.
 
 ### Testing and Building
 
@@ -172,44 +218,20 @@ The backend exposes REST endpoints directly on port 8000 and proxied via the SSR
 
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
-| `GET` | `/api/workflow/{key}` | Public | Retrieve the active schema definition and version number. |
+| `GET` | `/api/domains/navigation` | Public | Returns all active domain navigation items discovered from domain manifests. |
+| `GET` | `/api/workflow/{key}` | Public | Retrieve the active schema definition and version number (falls back to domain fixture). |
 | `GET` | `/api/workflow/{key}/versions` | Admin | Retrieve deployment history and previous versions. |
 | `POST` | `/api/workflow/{key}/version` | Admin | Validate schema and publish a new active version. |
 | `PUT` | `/api/workflow/{key}/rollback/{version}` | Admin | Re-activate an existing version without history loss. |
+| `POST` | `/api/workflow/{key}/submission` | Public | Submit form response data validated against the active workflow version. |
+| `GET` | `/api/reporting/{key}` | Public | Dynamically generates metrics, widgets, and table rows projected against the active schema. |
 | `GET` | `/health` | Public | API service health check. |
 
-### Publish Workflow Payload
-
-```json
-{
-  "schema_data": {
-    "title": "Deal intake",
-    "description": "Capture details for a new deal.",
-    "fields": [
-      {
-        "key": "dealName",
-        "label": "Deal name",
-        "type": "text",
-        "required": true
-      },
-      {
-        "key": "dealStage",
-        "label": "Deal stage",
-        "type": "dropdown",
-        "required": true,
-        "options": ["Lead", "Qualified", "Proposal", "Closed Won", "Closed Lost"]
-      }
-    ]
-  },
-  "updated_by": "admin@example.com",
-  "commit_message": "Add deal intake schema with stage dropdown"
-}
-```
-
-### Schema Rules
+### Schema Rules & Field Structure
 
 - **Workflow Key:** 1 to 50 characters, containing only alphanumeric characters, underscores (`_`), and hyphens (`-`).
 - **Supported Field Types:** `text`, `yesNo`, `dropdown`, `textarea`, `number`, `date`.
+- **Reporting Control:** Optional `reportable: boolean` (defaults to `true`). Set to `false` to hide non-analytical inputs from dashboard widgets.
 - **Dropdown Fields:** Must provide a non-empty list of string values under `options`.
 - **Field Keys:** Must be unique within the workflow schema.
 

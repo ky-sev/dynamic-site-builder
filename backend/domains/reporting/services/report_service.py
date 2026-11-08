@@ -1,10 +1,84 @@
 from typing import Any, Dict, List
+import pygal
+from pygal.style import Style
+
 from domains.reporting.schemas.report import (
     ChartType,
     DynamicReportResponse,
     ReportColumn,
     ReportWidget,
 )
+
+# Custom responsive Pygal palette matching the Application's green theme
+THEME_STYLE = Style(
+    background="transparent",
+    plot_background="transparent",
+    foreground="#17231f",
+    foreground_strong="#17231f",
+    foreground_subtle="#68756e",
+    opacity=".9",
+    opacity_hover="1",
+    transition="250ms ease-in",
+    colors=("#277352", "#3a9b69", "#5ea881", "#85c2a1", "#adc9b9", "#cbd5e1", "#e2e8f0"),
+    font_family='Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    label_font_size=11,
+    major_label_font_size=11,
+    title_font_size=13,
+    legend_font_size=11,
+)
+
+
+def _render_donut_svg(label: str, yes_count: int, no_count: int) -> str:
+    """Renders a real vector donut chart SVG using Pygal."""
+    chart = pygal.Pie(
+        inner_radius=0.6,
+        height=190,
+        width=300,
+        style=THEME_STYLE,
+        show_legend=True,
+        legend_at_bottom=True,
+        legend_at_bottom_columns=2,
+        margin=10,
+        print_values=True,
+    )
+    chart.title = label
+    chart.add("Yes", yes_count)
+    chart.add("No", no_count)
+    return chart.render(is_unicode=True)
+
+
+def _render_bar_svg(label: str, distribution: Dict[str, int]) -> str:
+    """Renders a true categorical bar chart SVG using Pygal."""
+    chart = pygal.Bar(
+        height=190,
+        width=320,
+        style=THEME_STYLE,
+        show_legend=False,
+        margin=10,
+        print_values=True,
+    )
+    chart.title = label
+    chart.x_labels = list(distribution.keys())
+    chart.add("", list(distribution.values()))
+    return chart.render(is_unicode=True)
+
+
+def _render_timeline_svg(title: str, timeline_data: List[Dict[str, Any]]) -> str:
+    """Renders a submission activity line chart SVG using Pygal."""
+    chart = pygal.Line(
+        height=190,
+        width=320,
+        style=THEME_STYLE,
+        show_legend=False,
+        margin=10,
+        show_dots=True,
+        dots_size=3,
+        fill=True,
+    )
+    chart.title = title
+    chart.x_labels = [str(d.get("date", "")) for d in timeline_data]
+    chart.add("Submissions", [int(d.get("count", 0)) for d in timeline_data])
+    return chart.render(is_unicode=True)
 
 
 # Projects submissions against active schema fields, grouping reportable fields into typed chart widgets.
@@ -60,6 +134,7 @@ def generate_dynamic_report(
             metrics[f_key] = metric_data
 
             if is_reportable:
+                donut_svg = _render_donut_svg(f_label, true_count, no_count)
                 widgets.append(
                     ReportWidget(
                         id=f"widget_{f_key}",
@@ -67,6 +142,7 @@ def generate_dynamic_report(
                         title=f_label,
                         chart_type=ChartType.DONUT_CHART,
                         summary=f"{completion_rate}% affirmative",
+                        svg=donut_svg,
                         data=[
                             {"label": "Yes", "value": true_count, "color": "#277352"},
                             {"label": "No", "value": no_count, "color": "#cbd5e1"},
@@ -92,6 +168,7 @@ def generate_dynamic_report(
                     {"label": opt, "value": count}
                     for opt, count in distribution.items()
                 ]
+                bar_svg = _render_bar_svg(f_label, distribution)
                 widgets.append(
                     ReportWidget(
                         id=f"widget_{f_key}",
@@ -99,6 +176,7 @@ def generate_dynamic_report(
                         title=f_label,
                         chart_type=ChartType.BAR_CHART,
                         summary=f"{len(distribution)} categories",
+                        svg=bar_svg,
                         data=chart_data,
                     )
                 )
@@ -133,6 +211,7 @@ def generate_dynamic_report(
                         title=f_label,
                         chart_type=ChartType.STAT_CARD,
                         summary=f"Avg: {avg_val}",
+                        svg=None,
                         data={
                             "average": avg_val,
                             "min": min_val,
@@ -162,6 +241,7 @@ def generate_dynamic_report(
                         title=f_label,
                         chart_type=ChartType.STAT_CARD,
                         summary=f"{response_rate}% filled",
+                        svg=None,
                         data={
                             "response_rate": response_rate,
                             "populated_count": populated_count,
@@ -182,6 +262,7 @@ def generate_dynamic_report(
             {"date": d, "count": c}
             for d, c in sorted(dates_count.items())
         ]
+        timeline_svg = _render_timeline_svg("Activity Timeline", timeline_data)
         widgets.insert(
             0,
             ReportWidget(
@@ -190,6 +271,7 @@ def generate_dynamic_report(
                 title="Submission Activity",
                 chart_type=ChartType.LINE_CHART,
                 summary=f"{total_submissions} total submissions",
+                svg=timeline_svg,
                 data=timeline_data,
             ),
         )

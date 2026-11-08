@@ -98,30 +98,18 @@ input:focus, textarea:focus { border-color: #3a9b69; box-shadow: 0 0 0 3px #3a9b
 .dist-list { margin-top: 6px; font-size: 12px; }
 .dist-row { display: flex; justify-content: space-between; padding: 2px 0; color: #34443b; }
 
-.widget-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 140px; }
-.widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.widget-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 220px; overflow: hidden; }
+.widget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .chart-badge { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #53645a; background: #e5eae6; padding: 2px 6px; border-radius: 4px; }
-.widget-summary { font-size: 11px; font-weight: 600; color: #53645a; margin-top: 10px; border-top: 1px dashed #e5eae6; padding-top: 6px; }
+.widget-summary { font-size: 11px; font-weight: 600; color: #53645a; margin-top: 8px; border-top: 1px dashed #e5eae6; padding-top: 6px; }
 
-/* Donut widget styles */
-.donut-bar-track { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #edf2ee; margin-bottom: 8px; }
-.donut-segment { height: 100%; transition: width 0.3s ease; }
-.donut-legend { display: flex; gap: 12px; font-size: 11px; color: #53645a; flex-wrap: wrap; margin-top: 4px; }
-.legend-item { display: inline-flex; align-items: center; gap: 5px; }
-.legend-swatch { width: 8px; height: 8px; border-radius: 2px; }
+/* Pygal SVG Container */
+.pygal-svg-container { width: 100%; display: flex; justify-content: center; align-items: center; min-height: 180px; }
+.pygal-svg-container svg { width: 100% !important; height: auto !important; max-height: 200px; display: block; }
+.pygal-svg-container text { font-family: inherit !important; }
 
-/* Bar widget styles */
-.bar-list { display: flex; flex-direction: column; gap: 6px; }
-.bar-row { display: flex; flex-direction: column; gap: 2px; }
-.bar-info { display: flex; justify-content: space-between; font-size: 11px; color: #34443b; }
-.bar-track { height: 8px; background: #edf2ee; border-radius: 4px; overflow: hidden; }
-.bar-fill { height: 100%; background: #277352; border-radius: 4px; transition: width 0.3s ease; }
-
-/* Timeline widget styles */
-.timeline-bars { display: flex; align-items: flex-end; gap: 6px; height: 50px; padding-top: 6px; }
-.timeline-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
-.timeline-bar-fill { width: 100%; background: #3a9b69; border-radius: 3px 3px 0 0; min-height: 4px; }
-.timeline-date { font-size: 9px; color: #859089; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40px; }
+/* Stat Card */
+.stat-widget { padding: 12px 0; }
 
 footer { padding-top: 22px; color: #89938d; font-size: 12px; text-align: center; }
 

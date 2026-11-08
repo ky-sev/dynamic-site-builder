@@ -71,84 +71,20 @@
                 <span class="chart-badge">{{ widget.chart_type }}</span>
               </div>
 
-              @switch (widget.chart_type) {
-                @case ('donut_chart') {
-                  <div class="donut-widget">
-                    <div class="donut-bar-track">
-                      @for (segment of widget.data; track segment.label) {
-                        @if (report.total_submissions > 0) {
-                          <div
-                            class="donut-segment"
-                            [style.width.%]="(segment.value / report.total_submissions) * 100"
-                            [style.background]="segment.color"
-                            [title]="segment.label + ': ' + segment.value"
-                          ></div>
-                        }
-                      }
-                    </div>
-                    <div class="widget-summary">{{ widget.summary }}</div>
-                    <div class="donut-legend">
-                      @for (segment of widget.data; track segment.label) {
-                        <span class="legend-item">
-                          <span class="legend-swatch" [style.background]="segment.color"></span>
-                          {{ segment.label }}: {{ segment.value }}
-                        </span>
-                      }
-                    </div>
-                  </div>
-                }
-
-                @case ('bar_chart') {
-                  <div class="bar-widget">
-                    <div class="bar-list">
-                      @for (bar of widget.data; track bar.label) {
-                        <div class="bar-row">
-                          <div class="bar-info">
-                            <span class="bar-label">{{ bar.label }}</span>
-                            <span class="bar-val">{{ bar.value }}</span>
-                          </div>
-                          <div class="bar-track">
-                            <div
-                              class="bar-fill"
-                              [style.width.%]="report.total_submissions > 0 ? (bar.value / report.total_submissions) * 100 : 0"
-                            ></div>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                    <div class="widget-summary">{{ widget.summary }}</div>
-                  </div>
-                }
-
-                @case ('stat_card') {
-                  <div class="stat-widget">
-                    @if (widget.data.average !== undefined) {
-                      <span class="metric-large">{{ widget.data.average }}</span>
-                      <span class="metric-subtext">Min: {{ widget.data.min }} · Max: {{ widget.data.max }}</span>
-                    } @else {
-                      <span class="metric-large">{{ widget.data.response_rate }}%</span>
-                      <span class="metric-subtext">{{ widget.data.populated_count }} / {{ widget.data.total }} recorded</span>
-                    }
-                    <div class="widget-summary">{{ widget.summary }}</div>
-                  </div>
-                }
-
-                @case ('line_chart') {
-                  <div class="line-widget">
-                    <div class="timeline-bars">
-                      @for (point of widget.data; track point.date) {
-                        <div class="timeline-bar-col" [title]="point.date + ': ' + point.count">
-                          <div
-                            class="timeline-bar-fill"
-                            [style.height.%]="report.total_submissions > 0 ? (point.count / report.total_submissions) * 100 : 20"
-                          ></div>
-                          <span class="timeline-date">{{ point.date }}</span>
-                        </div>
-                      }
-                    </div>
-                    <div class="widget-summary">{{ widget.summary }}</div>
-                  </div>
-                }
+              @if (widget.svg) {
+                <div class="pygal-svg-container" [innerHTML]="sanitizeSvg(widget.svg)"></div>
+                <div class="widget-summary">{{ widget.summary }}</div>
+              } @else {
+                <div class="stat-widget">
+                  @if (widget.data.average !== undefined) {
+                    <span class="metric-large">{{ widget.data.average }}</span>
+                    <span class="metric-subtext">Min: {{ widget.data.min }} · Max: {{ widget.data.max }}</span>
+                  } @else {
+                    <span class="metric-large">{{ widget.data.response_rate }}%</span>
+                    <span class="metric-subtext">{{ widget.data.populated_count }} / {{ widget.data.total }} recorded</span>
+                  }
+                  <div class="widget-summary">{{ widget.summary }}</div>
+                </div>
               }
             </div>
           }

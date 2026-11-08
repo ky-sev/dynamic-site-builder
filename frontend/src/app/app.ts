@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { afterNextRender, Component, signal } from '@angular/core';
+import { afterNextRender, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 interface ActiveWorkflow {
   schema_data: Record<string, unknown>;
@@ -53,6 +54,7 @@ export interface ReportWidget {
   title: string;
   chart_type: 'stat_card' | 'bar_chart' | 'donut_chart' | 'line_chart';
   summary: string;
+  svg?: string;
   data: any;
 }
 
@@ -143,6 +145,12 @@ export class App {
   protected readonly saving = signal(false);
   protected readonly message = signal('');
   protected readonly messageIsError = signal(false);
+  private readonly sanitizer = inject(DomSanitizer);
+
+  protected sanitizeSvg(svg: string | undefined): SafeHtml {
+    if (!svg) return '';
+    return this.sanitizer.bypassSecurityTrustHtml(svg);
+  }
 
   constructor() {
     afterNextRender(() => {
